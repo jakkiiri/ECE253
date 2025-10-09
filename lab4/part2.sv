@@ -23,7 +23,6 @@ module Rate_divider #(parameter CLOCK_FREQUENCY=500) (
     logic [WIDTH-1:0] Q_reg, Q_next;
 
     always_comb begin
-        Enable = 1'b0;
         // handles cycle at one
         if (CYCLES == 1) begin
             Q_next = 0;
@@ -39,10 +38,13 @@ module Rate_divider #(parameter CLOCK_FREQUENCY=500) (
     end
 
     always_ff @(posedge clk) begin
-        if (!Reset)
+        if (!Reset) begin
             Q_reg <= CYCLES - 1;
-        else
+            Enable = 1'b0;
+        end else begin
             Q_reg <= Q_next;
+            Enable = 1'b0;
+        end
     end
 endmodule
 
