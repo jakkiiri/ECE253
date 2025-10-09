@@ -1,70 +1,70 @@
-module ff (
-    input logic clk,
-    input logic rst_n,
-    input logic d,
-    input logic loadn,
-    input logic LoadLeft,
-    input logic right,
-    input logic left,
-    output logic q
+module Rate_divider #(parameter CLOCK_FREQUENCY=500) (
+    input  logic clk,
+    input  logic Reset,         // active high
+    input  logic [1:0] Speed,
+    output logic Enable
 );
-    logic shift_in;
-    always_comb begin
-        if (!loadn) begin
-            shift_in = d;
-        end else if (LoadLeft) begin
-            shift_in = left;
-        end else begin
-            shift_in = right;
-        end
+
+    localparam WIDTH = $clog2(CLOCK_FREQUENCY*4);
+    logic [WIDTH-1:0] CYCLES;
+    // determine the number of cycles that need to be counted
+    always_comb 
+    begin
+        case (Speed)
+            2'b00: CYCLES = 1; // same as clock
+            2'b01: CYCLES = CLOCK_FREQUENCY; // 1 Hz
+            2'b10: CYCLES = CLOCK_FREQUENCY*2; // 0.5 Hz
+            2'b11: CYCLES = CLOCK_FREQUENCY*4; // 0.25 Hz
+            default: CYCLES = 1;
+    endcase
     end
+    logic [WIDTH-1:0] Q_reg;
+	
+    assign Enable = (Speed == 2'b00) ? clk : (Q_reg == 'b0)?'1:'0;
     always_ff @(posedge clk) begin
-        if (rst_n)
-            q <= 1'b0;
-        else
-            q <= shift_in;
+        if (Reset) begin
+            Q_reg <= CYCLES - 1;
+        end else if (Q_reg == 0) begin
+	    Q_reg <= CYCLES - 1;
+        end else begin
+	    Q_reg <= Q_reg - 1;
+	end
     end
 endmodule
 
-module ff_0 (
-    input logic clk,
-    input logic rst_n,
-    input logic d,
-    input logic loadn,
-    input logic LoadLeft,
-    input logic right,
-    input logic left,
-    input logic asr,
-    output logic q
+module DisplayCounter (
+    input logic clk, Reset, EnableDC,
+    output logic [3:0] CounterValue
 );
-    logic shift_in;
-    always_comb begin
-        if (!loadn) begin
-            shift_in = d;
-        end else if (LoadLeft) begin
-            if (asr) begin
-                shift_in = q; // Arithmetic shift right
-            end else begin
-                shift_in = left;
-            end
-        end else begin
-            shift_in = right;
-        end
-    end
     always_ff @(posedge clk) begin
-        if (rst_n)
-            q <= 1'b0;
-        else
-            q <= shift_in;
+        if (Reset) begin
+            CounterValue <= 4'b0000;
+        end
+        else if (EnableDC) begin
+            CounterValue <= CounterValue + 1;
+        end
     end
 endmodule
 
-module part1 (input logic clock, reset, ParallelLoadn, RotateRight, ASRight,
-                input logic [3:0] Data_IN, 
-                output logic [3:0] Q);
-            // ASR only affects the first FF
-    ff_0 ff0 (.clk(clock), .rst_n(reset), .d(Data_IN[3]), .loadn(ParallelLoadn), .LoadLeft(RotateRight), .right(Q[2]), .left(Q[0]), .asr(ASRight), .q(Q[3]));
-    ff ff1 (.clk(clock), .rst_n(reset), .d(Data_IN[2]), .loadn(ParallelLoadn), .LoadLeft(RotateRight), .right(Q[1]), .left(Q[3]), .q(Q[2]));
-    ff ff2 (.clk(clock), .rst_n(reset), .d(Data_IN[1]), .loadn(ParallelLoadn), .LoadLeft(RotateRight), .right(Q[0]), .left(Q[2]), .q(Q[1]));
-    ff ff3 (.clk(clock), .rst_n(reset), .d(Data_IN[0]), .loadn(ParallelLoadn), .LoadLeft(RotateRight), .right(Q[3]), .left(Q[1]), .q(Q[0]));
+module part2 #(parameter CLOCK_FREQUENCY=500) (
+    input logic ClockIn,
+    input logic Reset,
+    input logic [1:0] Speed,
+    output logic [3:0] CounterValue
+);
+    logic EnableDC;
+    Rate_divider #(CLOCK_FREQUENCY) RD (
+        .clk(ClockIn),
+        .Reset(Reset),
+        .Speed(Speed),
+        .Enable(EnableDC)
+    );
+
+    DisplayCounter DC (
+        .clk(ClockIn),
+        .Reset(Reset),
+        .EnableDC(EnableDC),
+        .CounterValue(CounterValue)
+    );
+
 endmodule
