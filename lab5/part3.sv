@@ -36,25 +36,22 @@ module part3(
             state <= next_state;
     end
 
-    // FSM Next State Logic
     always_comb begin
         next_state = state;
-        case(state)
+        case (state)
             IDLE: if (Go) next_state = RUN;
             RUN:  if (count == 3'd4) next_state = DONE;
-            DONE: if (!Go) next_state = IDLE;
+            DONE: next_state = IDLE; // Return to IDLE immediately
         endcase
     end
-
-    // Registers + Main Algorithm
-    always_ff @(posedge Clock or posedge Reset) begin
+    
+   always_ff @(posedge Clock or posedge Reset) begin
         if (Reset) begin
             A <= 5'b0;
             Q <= 4'b0;
             count <= 3'd0;
         end else begin
-            case(state)
-
+            case (state)
                 IDLE: begin
                     A <= 5'b0;
                     Q <= Dividend;
@@ -62,19 +59,22 @@ module part3(
                 end
 
                 RUN: begin
-                    // (A,Q) = left shift {A,Q}
-                    {A, Q} <= {A, Q} << 1;
+                    // Shift {A, Q}
+                    logic [8:0] AQ_shifted = {A, Q} << 1;
+                    A <= AQ_shifted[8:4];
+                    Q <= AQ_shifted[3:0];
 
-                    // Substract M from A
-                    A <= A - M;
+                    // Compute subtraction
+                    logic [4:0] A_temp = AQ_shifted[8:4] - M;
 
-                    // Check sign
-                    if (A[4] == 1) begin
-                        // Negative --> restore A and set q0 = 0
-                        A <= A + M;
+                    // Check sign and update A and Q[0]
+                    if (A_temp[4]) begin
+                        // Negative: restore A, set Q[0] = 0
+                        A <= AQ_shifted[8:4]; // Restore to shifted A
                         Q[0] <= 1'b0;
                     end else begin
-                        // Positive --> keep subtraction, q0 = 1
+                        // Positive: keep subtraction, set Q[0] = 1
+                        A <= A_temp;
                         Q[0] <= 1'b1;
                     end
 
@@ -84,7 +84,6 @@ module part3(
                 DONE: begin
                     // Hold results
                 end
-
             endcase
         end
     end
