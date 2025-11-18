@@ -8,19 +8,28 @@ _start:
 	mv s2, zero # This will store the binary number
 	
 POLL: lw s3, 0(s1) # Keys are here
+	# Keep polling if no keys pressed
+	beqz s3, POLL
+	# store key press in temp register
+	mv t5, s3
+	
+WAIT_RELEASE:
+	lw s3, 0(s1)
+	bnez s3, WAIT_RELEASE
+	# branch based on t5
 	# Check keys to branch
 	# key = 0 --> bit 0
 	addi a0, zero, 1
-	beq s3, a0, INIT
+	beq t5, a0, INIT
 	# key = 1 --> bit 1
 	addi a0, zero, 2
-	beq s3, a0, INCR
+	beq t5, a0, INCR
 	# Key = 2 --> bit 2
 	addi a0, zero, 4
-	beq s3, a0, DECR
+	beq t5, a0, DECR
 	# Key = 3 --> bit 3
 	addi a0, zero, 8
-	beq s3, a0, RST
+	beq t5, a0, RST
 	j POLL
 	
 INIT: 
@@ -48,8 +57,8 @@ DECR:
 # Need to poll locally in RST and WAIT_INPUT	
 RST:
 	lw s3, 0(s1)
-    	addi s2, zero, 0
-    	sw s2, 0(s0)
+    addi s2, zero, 0
+    sw s2, 0(s0)
 	beq s3, a0, RST # Check if bit 3 is still pressed
 	# Jump to wait input
 	j WAIT_INPUT
@@ -58,7 +67,7 @@ WAIT_INPUT:
 	lw s3, 0(s1)
 	# Waits for an input on s3
 	beqz s3, WAIT_INPUT
-	j INIT
+	j POLL
 
 	
 	
