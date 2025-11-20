@@ -49,7 +49,7 @@ INCR:
 DECR: 
 	# Decrease number, but check if number is 1
 	addi a0, zero, 1
-	beq s2, a0, POLL
+	ble s2, a0, POLL
 	addi s2, s2, -1
 	sw s2, 0(s0)
 	j POLL
